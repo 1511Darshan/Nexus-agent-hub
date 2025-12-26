@@ -72,8 +72,11 @@ def validate_choice(choice_text: str, context: Optional[str] = None) -> str:
     if context:
         prompt = f"Context: {context}\n\n" + prompt
 
+    # Allow overriding model via environment; pick a provider-compatible
+    # default that works with AIML provider.
+    model = os.getenv("AIML_MODEL", "openai/gpt-4.1-mini-2025-04-14")
     try:
-        resp = client.responses.create(model="gpt-4.1-mini", input=prompt)
+        resp = client.responses.create(model=model, input=prompt)
         # The OpenAI-compatible response structure may vary; try to extract
         # the text safely.
         output = None
