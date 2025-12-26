@@ -33,11 +33,17 @@ load_dotenv()
 
 
 def _get_client() -> Optional[OpenAI]:
+    """Create an OpenAI-compatible client pointed at OpenRouter.
+
+    Environment variables read:
+      - OPENROUTER_API_KEY (required)
+      - OPENROUTER_BASE_URL (optional, default: https://openrouter.ai/api/v1)
+    """
     if OpenAI is None:
         return None
 
-    api_key = os.getenv("AIML_API_KEY")
-    base_url = os.getenv("AIML_BASE_URL", "https://api.aimlapi.com/v1")
+    api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("AIML_API_KEY")
+    base_url = os.getenv("OPENROUTER_BASE_URL", os.getenv("AIML_BASE_URL", "https://openrouter.ai/api/v1"))
     if not api_key:
         return None
 
@@ -72,9 +78,8 @@ def validate_choice(choice_text: str, context: Optional[str] = None) -> str:
     if context:
         prompt = f"Context: {context}\n\n" + prompt
 
-    # Allow overriding model via environment; pick a provider-compatible
-    # default that works with AIML provider.
-    model = os.getenv("AIML_MODEL", "openai/gpt-4.1-mini-2025-04-14")
+    # Allow overriding model via environment; prefer OpenRouter model names.
+    model = os.getenv("OPENROUTER_MODEL") or os.getenv("AIML_MODEL") or "openai/gpt-4o-mini"
     try:
         resp = client.responses.create(model=model, input=prompt)
         # The OpenAI-compatible response structure may vary; try to extract
