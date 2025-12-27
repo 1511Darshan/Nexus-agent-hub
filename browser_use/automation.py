@@ -10,9 +10,30 @@ Provides:
 """
 
 import asyncio
-from browser_use import Agent
+
+from browser_use import Agent, BrowserConfig
 from browser_use.llm import ChatGoogle
 from browser_use.validators.aiml_validator import validate_choice
+
+
+def get_browser_choice():
+    """Prompt user to select which browser to use."""
+    print("\n=== SELECT BROWSER ===")
+    print("1) Chrome (default)")
+    print("2) Firefox")
+    print("3) Edge")
+    print("4) Safari (macOS only)")
+    
+    choice = input("\nSelect browser (1-4, default 1): ").strip()
+    
+    browser_map = {
+        "1": "chrome",
+        "2": "firefox",
+        "3": "edge",
+        "4": "safari",
+    }
+    
+    return browser_map.get(choice, "chrome")
 
 
 async def get_user_intent():
@@ -31,9 +52,9 @@ async def get_user_intent():
     return intent
 
 
-async def run_automation_task(task_description: str):
+async def run_automation_task(task_description: str, browser: str):
     """Run an agent for a general automation task."""
-    print(f"\nRunning task: {task_description}\n")
+    print(f"\nRunning task on {browser.upper()}: {task_description}\n")
 
     llm = ChatGoogle(model="gemini-2.0-flash", temperature=0.5)
     instructions = f"""
@@ -43,7 +64,8 @@ Be explicit about actions taken and return a short structured summary.
 """
 
     try:
-        agent = Agent(task=instructions, llm=llm)
+        browser_config = BrowserConfig(browser_type=browser)
+        agent = Agent(task=instructions, llm=llm, browser_config=browser_config)
         result = await agent.run(max_steps=20)
 
         print("\n--- RESULT ---\n")
@@ -62,9 +84,9 @@ Be explicit about actions taken and return a short structured summary.
         return False
 
 
-async def perform_click(url: str, selector: str):
+async def perform_click(url: str, selector: str, browser: str):
     """Open url and click element matching selector."""
-    print(f"\nClicking '{selector}' on {url}...\n")
+    print(f"\nClicking '{selector}' on {url} using {browser.upper()}...\n")
 
     llm = ChatGoogle(model="gemini-2.0-flash", temperature=0.2)
     instructions = f"""
@@ -75,7 +97,8 @@ Describe what you clicked and any visible result.
 """
 
     try:
-        agent = Agent(task=instructions, llm=llm)
+        browser_config = BrowserConfig(browser_type=browser)
+        agent = Agent(task=instructions, llm=llm, browser_config=browser_config)
         result = await agent.run(max_steps=12)
         print("\n--- CLICK RESULT ---\n")
         if getattr(result, "final_result", None):
@@ -91,9 +114,9 @@ Describe what you clicked and any visible result.
         print(f"Click failed: {e}")
 
 
-async def perform_scroll(url: str, amount: str):
+async def perform_scroll(url: str, amount: str, browser: str):
     """Open url and scroll by amount (pixels or 'bottom')."""
-    print(f"\nScrolling {url} by '{amount}'...\n")
+    print(f"\nScrolling {url} by '{amount}' using {browser.upper()}...\n")
 
     llm = ChatGoogle(model="gemini-2.0-flash", temperature=0.2)
 
@@ -114,7 +137,8 @@ Describe what changed after scrolling.
 """
 
     try:
-        agent = Agent(task=instructions, llm=llm)
+        browser_config = BrowserConfig(browser_type=browser)
+        agent = Agent(task=instructions, llm=llm, browser_config=browser_config)
         result = await agent.run(max_steps=12)
         print("\n--- SCROLL RESULT ---\n")
         if getattr(result, "final_result", None):
@@ -132,33 +156,42 @@ Describe what changed after scrolling.
 
 async def interactive_menu():
     """Main interactive menu."""
+    # Ask for browser selection once at the start
+    browser = get_browser_choice()
+    
     while True:
         print("\n=== MAIN MENU ===")
+        print(f"(Using: {browser.upper()})")
         print("1) New Automation Task")
         print("2) Click Element")
         print("3) Scroll Page")
-        print("4) Exit")
+        print("4) Change Browser")
+        print("5) Exit")
 
-        choice = input("\nSelect (1-4): ").strip()
+        choice = input("\nSelect (1-5): ").strip()
 
         if choice == "1":
             intent = await get_user_intent()
             if intent:
-                await run_automation_task(intent)
+                await run_automation_task(intent, browser)
 
         elif choice == "2":
             url = input("Enter URL: ").strip()
             selector = input("Enter CSS selector to click: ").strip()
             if url and selector:
-                await perform_click(url, selector)
+                await perform_click(url, selector, browser)
 
         elif choice == "3":
             url = input("Enter URL: ").strip()
             amount = input("Scroll amount (pixels or 'bottom'): ").strip()
             if url and amount:
-                await perform_scroll(url, amount)
+                await perform_scroll(url, amount, browser)
 
         elif choice == "4":
+            browser = get_browser_choice()
+            print(f"✓ Browser changed to {browser.upper()}")
+
+        elif choice == "5":
             print("Goodbye!")
             break
 
